@@ -1,0 +1,95 @@
+# Welcome to Serverless!
+#
+# This file is the main config file for your service.
+# It's very minimal at this point and uses default values.
+# You can always add more config options for more control.
+# We've included some commented out config examples here.
+# Just uncomment any of them to get that config option.
+#
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Happy Coding!
+
+service: merchant-onboarding-system-792232
+
+custom:
+  merchantsTableName: 'java-merchants-792232-${self:provider.stage}'
+  merchantCredentialTableName: 'java-merchantCredential-792232-${self:provider.stage}'
+
+provider:
+  name: aws
+  runtime: java8
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - { "Fn::GetAtt": ["MerchantsDynamoDBTable", "Arn" ] }
+        - { "Fn::GetAtt": ["MerchantCredentialDynamoDBTable", "Arn" ] }
+  environment:
+    MERCHANTS_TABLE_NAME: ${self:custom.merchantsTableName}
+    MERCHANT_CREDENTIAL_TABLE_NAME: ${self:custom.merchantCredentialTableName}
+
+package:
+  artifact: 'target/${self:service}-${self:provider.stage}.jar'
+
+functions:
+  createMerchant:
+    handler: com.mc.program.handler.SubmitMerchantHandler
+    events:
+      - http:
+          path: /merchants
+          method: post
+  getMerchant:
+    handler: com.mc.program.handler.GetMerchantHandler
+    events:
+      - http:
+          path: /merchants/{id}
+          method: get
+  listMerchants:
+    handler: com.mc.program.handler.GetAllMerchantsHandler
+    events:
+      - http:
+          path: /merchants
+          method: get
+
+resources:
+  Resources:
+    MerchantsDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.merchantsTableName}
+        AttributeDefinitions:
+          - AttributeName: merchantId
+            AttributeType: N
+          - AttributeName: merchantName
+            AttributeType: S
+        KeySchema:
+          - AttributeName: merchantId
+            KeyType: HASH
+          - AttributeName: merchantName
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    MerchantCredentialDynamoDBTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.merchantCredentialTableName}
+        AttributeDefinitions:
+          - AttributeName: merchantId
+            AttributeType: N
+        KeySchema:
+          - AttributeName: merchantId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
